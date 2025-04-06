@@ -362,6 +362,9 @@ static const MallocDispatch* native_allocator_dispatch;
 void InitNativeAllocatorDispatch(libc_globals* globals) {
   const bool jemalloc_impl = true;
   switch (get_prog_id()) {
+      case PROG_BIN:
+         jemalloc_impl = false;
+         break;
        default:
          jemalloc_impl = getenv("DISABLE_JEMALLOC") == nullptr;
    }

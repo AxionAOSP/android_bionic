@@ -90,8 +90,12 @@ static void init_prog_id(libc_globals* globals) {
   int prog_id = 0;
 
 #define IS(prog) (!strcmp(exe_path, prog))
-
+   
 #undef IS
+
+  if (strstr(exe_path, "/bin/")) {
+    prog_id = PROG_BIN;
+  }
 
   // libc_globals struct is write-protected
   globals->prog_id = prog_id;
