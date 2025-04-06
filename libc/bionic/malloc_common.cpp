@@ -360,7 +360,11 @@ static constexpr MallocDispatch __scudo_malloc_dispatch __attribute__((unused)) 
 static const MallocDispatch* native_allocator_dispatch;
  
 void InitNativeAllocatorDispatch(libc_globals* globals) {
-  const bool jemalloc_impl = getenv("DISABLE_JEMALLOC") == nullptr;
+  const bool jemalloc_impl = true;
+  switch (get_prog_id()) {
+       default:
+         jemalloc_impl = getenv("DISABLE_JEMALLOC") == nullptr;
+   }
  
   const MallocDispatch* table = jemalloc_impl ?
     &__libc_malloc_default_dispatch :
