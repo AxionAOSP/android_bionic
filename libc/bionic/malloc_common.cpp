@@ -332,6 +332,49 @@ extern "C" int __sanitizer_malloc_info(int, FILE*) {
 #endif
 // =============================================================================
 
+#define ScudoMalloc(function)  scudo_ ## function
+ 
+static constexpr MallocDispatch __scudo_malloc_dispatch __attribute__((unused)) = {
+  ScudoMalloc(calloc),
+  ScudoMalloc(free),
+  ScudoMalloc(mallinfo),
+  ScudoMalloc(malloc),
+  ScudoMalloc(malloc_usable_size),
+  ScudoMalloc(memalign),
+  ScudoMalloc(posix_memalign),
+#if defined(HAVE_DEPRECATED_MALLOC_FUNCS)
+  ScudoMalloc(pvalloc),
+#endif
+  ScudoMalloc(realloc),
+#if defined(HAVE_DEPRECATED_MALLOC_FUNCS)
+  ScudoMalloc(valloc),
+#endif
+   ScudoMalloc(malloc_iterate),
+   ScudoMalloc(malloc_disable),
+   ScudoMalloc(malloc_enable),
+   ScudoMalloc(mallopt),
+   ScudoMalloc(aligned_alloc),
+   ScudoMalloc(malloc_info),
+};
+ 
+static const MallocDispatch* native_allocator_dispatch;
+ 
+void InitNativeAllocatorDispatch(libc_globals* globals) {
+  const bool jemalloc_impl = getenv("DISABLE_JEMALLOC") == nullptr;
+ 
+  const MallocDispatch* table = jemalloc_impl ?
+    &__libc_malloc_default_dispatch :
+    &__scudo_malloc_dispatch;
+
+  if (!jemalloc_impl) {
+    globals->malloc_dispatch_table = __scudo_malloc_dispatch;
+    globals->current_dispatch_table = &globals->malloc_dispatch_table;
+    globals->default_dispatch_table = &globals->malloc_dispatch_table;
+  }
+
+  native_allocator_dispatch = table;
+}
+
 static constexpr MallocDispatch __libc_malloc_default_dispatch __attribute__((unused)) = {
   Malloc(calloc),
   Malloc(free),
@@ -356,5 +399,5 @@ static constexpr MallocDispatch __libc_malloc_default_dispatch __attribute__((un
 };
 
 const MallocDispatch* NativeAllocatorDispatch() {
-  return &__libc_malloc_default_dispatch;
+  return native_allocator_dispatch;
 }
