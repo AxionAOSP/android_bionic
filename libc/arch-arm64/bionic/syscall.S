@@ -71,12 +71,16 @@ ENTRY(syscall)
     mov     x1, x2
     bl      custom_rom_hide_syscall_openat
 
-    cmp     x0, #0
-    b.ge    .Lopenat_done
+    cmp     w0, #0
+    b.ge    .Lopenat_filtered_success
 
-    cmn     x0, #2
+    cmn     w0, #2
     b.ne    .Lopenat_fallback
     mov     x0, #-1
+    b       .Lopenat_done
+
+.Lopenat_filtered_success:
+    sxtw    x0, w0
     b       .Lopenat_done
 
 .Lopenat_fallback:

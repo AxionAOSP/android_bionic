@@ -121,7 +121,6 @@ static const char* const kBlockedExactPaths[] = {
     "/system/framework/oat/arm/org.lineageos.platform.vdex",
     "/system/framework/oat/arm/org.lineageos.platform.odex",
     "/system_ext/framework/org.lineageos.platform.jar",
-    "/dev/__properties__",
     nullptr
 };
 
@@ -178,6 +177,8 @@ static inline ssize_t raw_readlinkat(const char* path, char* buf, size_t size) {
 }
 
 static bool is_target_untrusted_app() {
+    if ((getuid() % AID_USER_OFFSET) < AID_APP_START) return false;
+
     int fd = raw_openat("/proc/thread-self/attr/current", O_RDONLY);
     if (fd < 0) {
         fd = raw_openat("/proc/self/attr/current", O_RDONLY);
@@ -328,10 +329,10 @@ enum ProcFilterType {
 };
 
 static bool is_proc_path_leaf(const char* path, const char* leaf) {
+    if (!path || !starts_with(path, "/proc/")) return false;
     if (!ends_with(path, leaf)) return false;
     size_t path_len = strlen(path);
     size_t leaf_len = strlen(leaf);
-    if (path_len == leaf_len) return true;
     return path[path_len - leaf_len - 1] == '/';
 }
 
@@ -428,7 +429,7 @@ static int filter_file_lines(const char* path, ProcFilterType type) {
     char* content = read_file_raw(path, &file_size);
     if (!content) return -1;
 
-    int mem_fd = raw_memfd_create("filtered", 0);
+    int mem_fd = raw_memfd_create("filtered", MFD_CLOEXEC);
     if (mem_fd < 0) {
         free(content);
         return -1;
@@ -510,7 +511,7 @@ int custom_rom_hide_filter_sepolicy(const char* path) {
     char* content = read_file_raw(path, &file_size);
     if (!content) return -1;
 
-    int mem_fd = raw_memfd_create("sectx", 0);
+    int mem_fd = raw_memfd_create("sectx", MFD_CLOEXEC);
     if (mem_fd < 0) {
         free(content);
         return -1;
@@ -645,7 +646,7 @@ void custom_rom_hide_spoof_statfs(const char* path, struct statfs* result) {
         }
     }
 
-    if (starts_with(path, "/apex") || strstr(path, "/exe") != nullptr) {
+    if (starts_with(path, "/apex") || (starts_with(path, "/proc/") && ends_with(path, "/exe"))) {
         result->f_flags |= ST_RDONLY;
     }
 }
